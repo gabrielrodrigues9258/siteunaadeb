@@ -1,0 +1,250 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Painel Admin - Unaadeb</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background: #111;
+      color: #fff;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 1.5rem;
+      text-align: center;
+    }
+    .logo {
+      max-width: 180px;
+      width: 100%;
+      height: auto;
+      margin-bottom: 1.5rem;
+    }
+    h2 {
+      color: #00ffaa;
+      margin-bottom: 1.5rem;
+      font-size: 1.6rem;
+    }
+    button {
+      background: #00ffaa;
+      border: none;
+      padding: 0.8rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      color: #000;
+      cursor: pointer;
+      margin: 0.4rem;
+      transition: 0.3s;
+    }
+    button:hover { background: #00dd99; }
+    .btn-relatorio {
+      background: #0099ff;
+      color: #fff;
+    }
+    select {
+      padding: 0.6rem;
+      border-radius: 8px;
+      background: #222;
+      color: #fff;
+      margin: 1rem 0;
+      font-size: 1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid #333;
+      padding: 0.6rem;
+      word-wrap: break-word;
+    }
+    th {
+      background: #222;
+      color: #0ff;
+    }
+    .btn-confirmar {
+      background: #0f0;
+      color: #000;
+      padding: 0.3rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .pago { color: #0f0; font-weight: bold; }
+    .nao-pago { color: #f00; font-weight: bold; }
+    a {
+      color: #0cf;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    a:hover { text-decoration: underline; }
+    @media (max-width: 768px) {
+      table, thead, tbody, th, td, tr { display: block; }
+      thead { display: none; }
+      tr {
+        margin-bottom: 1rem;
+        border: 1px solid #333;
+        border-radius: 10px;
+        padding: 0.5rem;
+        background: #1a1a1a;
+      }
+      td {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem;
+        border: none;
+        border-bottom: 1px solid #333;
+      }
+      td:last-child { border-bottom: none; }
+      td::before {
+        content: attr(data-label);
+        font-weight: bold;
+        color: #0ff;
+      }
+    }
+  </style>
+</head>
+<body>
+<script>
+  const senha = prompt("Digite a senha do administrador:");
+  if (senha !== "unaadeb2025") {
+    alert("Acesso negado.");
+    location.href = "index.html";
+  }
+</script>
+
+<img src="logo-evento.png.png" alt="Logo do Evento" class="logo"/>
+<h2>Painel Administrativo</h2>
+
+<button onclick="pedirSenhaLote()">Liberar Segundo Lote</button>
+<button class="btn-relatorio" onclick="gerarRelatorioExcel()">Relatório Excel</button>
+<button class="btn-relatorio" onclick="gerarRelatorioPDF()">Relatório PDF</button>
+
+<br/>
+<label for="filtroStatus">Filtrar:</label>
+<select id="filtroStatus" onchange="renderizarTabela()">
+  <option value="todos">Todos</option>
+  <option value="pago">Pagos</option>
+  <option value="naoPago">Não pagos</option>
+</select>
+
+<table>
+  <thead>
+    <tr>
+      <th>Nome</th>
+      <th>Nascimento</th>
+      <th>Congregação</th>
+      <th>Telefone</th>
+      <th>Status</th>
+      <th>Ações</th>
+    </tr>
+  </thead>
+  <tbody id="corpoTabela"></tbody>
+</table>
+
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js'
+
+  const supabase = createClient(
+    'https://spqrncljngdhvegzjols.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNwcXJuY2xqbmdkaHZlZ3pqb2xzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MjcxNzIsImV4cCI6MjA2OTUwMzE3Mn0.j2LBYFjR387xrhONgc3_z2DsNuGT2_q3PK5rjQLlt0s'
+  );
+
+  let listaInscritos = [];
+
+  async function carregarInscritos() {
+    const { data, error } = await supabase.from('inscritos').select('*');
+    if (error) {
+      console.error("Erro ao buscar inscritos:", error);
+      return;
+    }
+    listaInscritos = data;
+    renderizarTabela();
+  }
+
+  function renderizarTabela() {
+    const tbody = document.getElementById("corpoTabela");
+    const filtro = document.getElementById("filtroStatus").value;
+    tbody.innerHTML = "";
+
+    const filtrados = listaInscritos.filter(item => {
+      if (filtro === "todos") return true;
+      if (filtro === "pago") return item.pago === true;
+      if (filtro === "naoPago") return item.pago !== true;
+    });
+
+    for (const item of filtrados) {
+      const tr = document.createElement("tr");
+
+      const msgPago = "Olá " + item.nome + ", seu pagamento para o passeio da Unaadeb Setor 13 foi confirmado com sucesso! 🎉 Estamos felizes em contar com sua presença. Nos vemos lá! 🗓️ Data: 06 de Setembro 📍 Local: Sitio Canaã  Deus te abençoe! 🙌";
+
+      const msgNaoPago = "Olá " + item.nome + ", identificamos que seu pagamento para o passeio da Unaadeb Setor 13 ainda não foi confirmado. Se você já realizou o pagamento, por favor, aguarde a validação. Caso ainda não tenha feito, pedimos que efetue o quanto antes para garantir sua vaga. 📲 Qualquer dúvida, estamos à disposição. Deus te abençoe! 🙏";
+
+      tr.innerHTML = `
+        <td data-label="Nome">${item.nome}</td>
+        <td data-label="Nascimento">${formatarData(item.nascimento)}</td>
+        <td data-label="Congregação">${item.congregacao}</td>
+        <td data-label="Telefone">${item.telefone}</td>
+        <td data-label="Status" class="${item.pago ? 'pago' : 'nao-pago'}">${item.pago ? 'Pago' : 'Não pago'}</td>
+        <td data-label="Ações">
+          ${item.pago
+            ? `<a href="${'https://api.whatsapp.com/send?phone=55' + item.telefone.replace(/\D/g, '') + '&text=' + encodeURIComponent(msgPago)}" target="_blank">WhatsApp</a>`
+            : `<button class="btn-confirmar" onclick="confirmarPagamento('${item.id}')">Confirmar</button> | <a href="${'https://api.whatsapp.com/send?phone=55' + item.telefone.replace(/\D/g, '') + '&text=' + encodeURIComponent(msgNaoPago)}" target="_blank">WhatsApp</a>`
+          }
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  window.confirmarPagamento = async function (id) {
+    await supabase.from('inscritos').update({ pago: true }).eq('id', id);
+    alert("Pagamento confirmado!");
+    carregarInscritos();
+  };
+
+  function formatarData(dataISO) {
+    if (!dataISO) return "-";
+    const [ano, mes, dia] = dataISO.split('T')[0].split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
+
+  window.gerarRelatorioExcel = function () {
+    let csv = "Nome,Congregação,Telefone,Nascimento,Status\n";
+    listaInscritos.forEach(i => {
+      csv += `"${i.nome}","${i.congregacao}","${i.telefone}","${formatarData(i.nascimento)}","${i.pago ? 'Pago' : 'Não pago'}"\n`;
+    });
+    const blob = new Blob([csv], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "relatorio_inscritos.csv";
+    link.click();
+  };
+
+  window.gerarRelatorioPDF = function () {
+    let janela = window.open('', '', 'width=800,height=600');
+    let html = '<h2>Relatório de Inscritos</h2><table border="1" style="width:100%; border-collapse:collapse;"><tr><th>Nome</th><th>Congregação</th><th>Telefone</th><th>Nascimento</th><th>Status</th></tr>';
+    listaInscritos.forEach(i => {
+      html += `<tr><td>${i.nome}</td><td>${i.congregacao}</td><td>${i.telefone}</td><td>${formatarData(i.nascimento)}</td><td>${i.pago ? 'Pago' : 'Não pago'}</td></tr>`;
+    });
+    html += "</table>";
+    janela.document.write(html);
+    janela.print();
+  };
+
+  window.pedirSenhaLote = function () {
+    const senha = prompt("Digite a senha para liberar o segundo lote:");
+    if (senha === "liberar2025") {
+      localStorage.setItem("lote2", "liberado");
+      alert("Segundo lote liberado com sucesso!");
+    } else {
+      alert("Senha incorreta.");
+    }
+  };
+
+  carregarInscritos();
+</script>
+</body>
+</html>
